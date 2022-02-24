@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sddeploy-autoscaling
+  labels:
+    app: my-k8s-deployment
+spec:
+  selector:
+    matchLabels:
+      app: demo-deployment-autoscaling # Service will look for those PODS labels
+  template:
+    metadata:
+      labels:
+        app: demo-deployment-autoscaling
+    spec:
+      containers:        
+        - name: tomcat-web
+          image: tomcat:8.5.38
+          ports:
+            - containerPort: 8080 # Port on Pod
+
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-autoscaling
+  labels:
+    env: prod
+    owner: sdan
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v2beta1v1
+    kind: Deployment
+    name: demo-deployment-autoscaling
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: autoscaling-pod-service
+  labels:
+    env: prod
+    owner: sdan
+spec:
+  type: LoadBalancer
+  selector:
+    app: demo-deployment-autoscaling
+  ports:
+    - name       : tomcat-app-listener
+      protocol   : TCP
+      port       : 9999 # Port on Load Balancer
+      targetPort : 8080 # Port on POD
